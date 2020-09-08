@@ -1,11 +1,34 @@
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import SGDRegressor
+from sklearn.base import clone
+import matplotlib.pyplot as plt
 import numpy as np
 
+
+# Plotting learning curves for visualization of performance
+def plot_learning_curves(model, X, y):
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2)
+    train_errors, val_errors = [], []
+    for m in range(1, len(X_train)):
+        model.fit(X_train[:m], y_train[:m])
+        y_train_predict = model.predict(X_train[:m])
+        y_val_predict = model.predict(X_val)
+        train_errors.append(mean_squared_error(y_train[:m], y_train_predict))
+        val_errors.append(mean_squared_error(y_val, y_val_predict))
+    plt.plot(np.sqrt(train_errors), 'r-+', linewidth=2, label = 'train')
+    plt.plot(np.sqrt(val_errors), 'b', linewidth=2, label = 'val')
+    plt.axis([0, 80, 0, 3])
+    plt.show()
+
 # Random sample of training data incorporating batches
-def random_sample_train(X, y, m, b):
+def random_sample_train(X, y, m, b, debug=False):
     r_index = np.random.randint(m)
     xi = X[r_index:r_index+1]
     yi = y[r_index:r_index+1]
     for i in range(1,b):
+        if debug:
+            print(i)
         r_index = np.random.randint(m)
         xi = np.vstack((xi, X[r_index:r_index+1]))
         yi = np.vstack((yi, y[r_index:r_index+1]))
@@ -52,3 +75,22 @@ def minibatch_gd_MSE(X, y, n_epochs=50, m=100, b=5, h1=5, h2=50, debug=False):
                 eta = learning_schedule(e * m + i * b + j, h1, h2)
                 _, theta = GD_update(np.asarray([x_r[j]]), np.asarray([y_r[j]]), theta, eta, int(m/b))
     return theta
+
+# Early stopping for gradient descent on linear models
+def early_stop_MSE(X_train, y_train, X_val, y_val, model, gd_method=SGDRegressor, n_epochs=1000, min_val_error=float("inf")):
+    X_train_scaled = model.fit_transform(X_train)
+    X_val_scaled = model.transform(X_val)
+
+    sgd_reg = gd_method(max_iter=1, tol=-np.infty, warm_start=True, penalty=None, learning_rate="constant", eta0=0.0005)
+
+    best_epoch = None
+    best_model = None
+    for e in range(n_epochs):
+        sgd_reg.fit(X_train_scaled, y_train.ravel())
+        y_val_predict = sgd_reg.predict(X_val_scaled)
+        val_error = mean_squared_error(y_val, y_val_predict)
+        if val_error < min_val_error:
+            min_val_error = val_error
+            best_epoch = e
+            best_model = clone(sgd_reg)
+    return best_epoch, best_model
