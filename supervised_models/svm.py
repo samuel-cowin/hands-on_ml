@@ -53,9 +53,11 @@ print("RBF Kernel SVM Classification: {}\n".format(svm_pred))
 
 # Regression
 # In addition to classification, SVMs can be used for regression
-X = iris['data'][:, 3:]
-y = (iris['target'] == 2).astype(np.int)
-svm_poly_reg = SVR(kernel="poly", degree=2, C=100, epsilon=0.1)
-svm_poly_reg.fit(X, y)
-pred = svm_poly_reg.predict([[1.8], [1.5]])
-print("Polynomial SVM Regression: {}\n".format(pred))
+X = 2 * np.random.rand(100,1)
+y = 4 + 3 * X + np.random.randn(100,1) 
+svm_reg = SVR(kernel="linear", C=100, epsilon=0.1)
+svm_reg.fit(X, y.ravel())
+X_new = np.array([[0], [2]])
+pred = svm_reg.predict(X_new)
+print("Linear SVM Regression Prediction: {}\n".format(pred))
+# Linear Regression Prediction: [[4.06278739] [9.88949282]]
