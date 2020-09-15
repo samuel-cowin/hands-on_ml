@@ -1,10 +1,11 @@
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans, DBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.datasets import make_moons, fetch_openml, load_digits
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
-from clustering_utils import train_test_split, partially_label_data
+from clustering_utils import train_test_split, partially_label_data, plot_training_model
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -12,7 +13,7 @@ import numpy as np
 # K-means clustering is a popular technique in which you take k clusters and iterate between finding the centroid of these points and labeling closest points
 
 # Generate data
-X,_ = make_moons(n_samples=1000, noise=0.15, random_state=42)
+X,y = make_moons(n_samples=1000, noise=0.15, random_state=42)
 k=int(input('Number of clusters: '))
 percent = int(input('Percentage of data to be labeled from clusters: '))
 
@@ -62,3 +63,11 @@ X_pp, y_pp = partially_label_data(X_train, y_train, kmeans, k, percent)
 log_reg = LogisticRegression(max_iter=10000)
 log_reg.fit(X_pp, y_pp)
 print('Logistic Regression Score after semi-supervised learning: {}'.format(log_reg.score(X_test, y_test)))
+
+# Another clustering mechanism is the DBscan algorithm
+# This can be used to train other classification algorithms for heightened performance
+dbscan = DBSCAN(eps=0.2, min_samples=5)
+dbscan.fit(X)
+knn = KNeighborsClassifier(n_neighbors=k)
+knn.fit(dbscan.components_, dbscan.labels_[dbscan.core_sample_indices_])
+plot_training_model(X, y, knn)
