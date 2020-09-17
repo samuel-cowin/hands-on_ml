@@ -4,8 +4,8 @@ from sklearn.datasets import make_moons, fetch_openml, load_digits
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV
-from clustering_utils import train_test_split, partially_label_data, plot_training_model
+from sklearn.model_selection import GridSearchCV, train_test_split
+from clustering_utils import train_test_split_index, partially_label_data, plot_training_model, labels_for_data, propagate_label_data
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -30,7 +30,7 @@ s_score = silhouette_score(X, mb_k_clus.labels_)
 # Color Segmemtation
 X, y = fetch_openml('mnist_784', version=1, return_X_y=True)
 y = y.astype(np.uint8)
-X_train, y_train, X_test, y_test = train_test_split(60000, X, y)
+X_train, y_train, X_test, y_test = train_test_split_index(60000, X, y)
 plt.imshow(X_train[1].reshape(28,28))
 plt.show()
 X_train.reshape(-1,3)
@@ -41,7 +41,7 @@ plt.show()
 
 # Dimensionality reduction for supervised classification
 X, y = load_digits(return_X_y=True)
-X_train, y_train, X_test, y_test = train_test_split(1500, X, y)
+X_train, X_test, y_train, y_test = train_test_split(X, y)
 log_reg = LogisticRegression(max_iter=10000)
 log_reg.fit(X_train, y_train)
 print('Baseline Logistic Regression Score: {}'.format(log_reg.score(X_test, y_test)))
@@ -59,9 +59,13 @@ print('Logistic Regression Score after best clustering: {}'.format(grid_clf.scor
 
 # Semi-supervised learning
 kmeans = KMeans(n_clusters=k)
-X_pp, y_pp = partially_label_data(X_train, y_train, kmeans, k, percent)
+X_rep, y_rep = labels_for_data(kmeans, X_train)
+X_rep_fix = np.array(X_rep.reshape(1,-1))
+y_rep_fix = np.array(y_rep.reshape(1,-1))
+y_train_p = propagate_label_data(X_train, y_rep, kmeans, k=50)
+X_pp, y_pp = partially_label_data(X_train, y_train_p, kmeans, k, percent)
 log_reg = LogisticRegression(max_iter=10000)
-log_reg.fit(X_pp, y_pp)
+log_reg.fit(X_rep, y_rep)
 print('Logistic Regression Score after semi-supervised learning: {}'.format(log_reg.score(X_test, y_test)))
 
 # Another clustering mechanism is the DBscan algorithm
