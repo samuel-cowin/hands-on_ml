@@ -1,5 +1,11 @@
 import tensorflow as tf
 from tensorflow import keras
+import numpy as np
+
+# Random batch for custom training loops
+def random_batch(X, y, b_size=32):
+    id = np.random.randint(len(X), size=b_size)
+    return X[id], y[id]
 
 # Example of a basic implementation of a custom loss function
 def huber_loss(y_true, y_pred):
@@ -115,3 +121,35 @@ class GaussianNoiseLayer(keras.layers.Layer):
             return X
     def compute_output_shape(self, batch_input_shape):
         return batch_input_shape
+#  Residual block layer
+class ResidualBlock(keras.layers.Layer):
+    # Generate the desired number of dense layers for the block
+    def __init__(self, n_layers, n_neurons, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden = [keras.layers.Dense(n_neurons, activation="elu", kernel_initializer="he_normal") for _ in range(n_layers)]
+    # Add the inputs to the output of all of the layers
+    def call(self, inputs):
+        Z = inputs
+        for layer in self.hidden:
+            Z = layer(Z)
+        return inputs + Z
+
+# Custom model utilizing residual blocks and implementing loss metric of internal parameter
+class ResidualRegressor(keras.models.Model):
+    def __init__(self, output_dim, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden = keras.layers.Dense(30, activation="elu", kernel_initializer="he_normal")
+        self.rblock = ResidualBlock(3, 30)
+        self.out = keras.layers.Dense(output_dim)
+    def build(self, batch_input_shape):
+        n_inputs = batch_input_shape[-1]
+        self.reconstruct = keras.layers.Dense(n_inputs)
+        super().build(batch_input_shape)
+    def call(self, inputs):
+        Z = self.hidden(inputs)
+        for _ in range(4):
+            Z = self.rblock(Z)
+        recon = self.reconstruct(Z)
+        recon_loss = tf.reduce_mean(tf.square(recon-inputs))
+        self.add_loss(0.05 * recon_loss)
+        return self. out(Z)
